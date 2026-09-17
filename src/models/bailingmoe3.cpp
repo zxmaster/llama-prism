@@ -217,7 +217,7 @@ static ggml_tensor * bailingmoe3_causal_conv1d(
 }
 
 llama_model_bailingmoe3::graph::graph(const llama_model & model, const llm_graph_params & params) :
-    llm_build_delta_net_base(params), model(model) {
+    llm_build_delta_net_base(model, params) {
     ggml_tensor * inpL = build_inp_embd(model.tok_embd);
     cb(inpL, "model.input_embed", -1);
 

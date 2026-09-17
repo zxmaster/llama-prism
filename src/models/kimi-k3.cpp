@@ -232,7 +232,7 @@ ggml_tensor * llama_model_kimi_k3::graph::res_mix(ggml_tensor * cur, ggml_tensor
 }
 
 llama_model_kimi_k3::graph::graph(const llama_model & model, const llm_graph_params & params) :
-    llm_build_delta_net_base(params), model(model) {
+    llm_build_delta_net_base(model, params) {
 
     ggml_tensor * cur;
     ggml_tensor * inpL;

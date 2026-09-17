@@ -22,9 +22,16 @@ struct llm_build_mamba_base : public llm_graph_context {
 };
 
 struct llm_build_delta_net_base : public llm_graph_context {
-    llm_build_delta_net_base(const llm_graph_params & params);
+    const llama_model & model;
+
+    llm_build_delta_net_base(const llama_model & model, const llm_graph_params & params);
 
     virtual ~llm_build_delta_net_base() = default;
+
+    // fused GDN kernels are only implemented for accelerator backends: layers assigned to
+    // the CPU (partial offload) fall back to the unfused path per layer, instead of letting
+    // llama_context::resolve_fused_ops() disable fusion for the entire model
+    bool delta_net_fused_ok(int il) const;
 
     // returns pair of output and new state
     std::pair<ggml_tensor *, ggml_tensor *> build_delta_net_chunking(
@@ -1850,8 +1857,6 @@ struct llama_model_bailingmoe3 : public llama_model_base {
 
     struct graph : public llm_build_delta_net_base {
         graph(const llama_model & model, const llm_graph_params & params);
-
-        const llama_model & model;
     };
 
     struct graph_mtp : public llm_graph_context {
@@ -2229,8 +2234,6 @@ struct llama_model_qwen3next : public llama_model_base {
         std::pair<ggml_tensor *, ggml_tensor *> build_qkvz(
                     ggml_tensor * input,
                             int   il);
-
-        const llama_model & model;
     };
 
     struct graph_mtp : public llm_graph_context {
@@ -2279,8 +2282,6 @@ struct llama_model_qwen35 : public llama_model_base {
         std::pair<ggml_tensor *, ggml_tensor *> build_qkvz(
                     ggml_tensor * input,
                             int   il);
-
-        const llama_model & model;
     };
 
     struct graph_mtp : public llm_graph_context {
@@ -2325,8 +2326,6 @@ struct llama_model_qwen35moe : public llama_model_base {
         std::pair<ggml_tensor *, ggml_tensor *> build_qkvz(
                     ggml_tensor * input,
                             int   il);
-
-        const llama_model & model;
     };
 
     struct graph_mtp : public llm_graph_context {
@@ -2374,8 +2373,6 @@ struct llama_model_kimi_k3 : public llama_model_base {
 
     struct graph : public llm_build_delta_net_base {
         graph(const llama_model & model, const llm_graph_params & params);
-
-        const llama_model & model;
 
         // Cross-layer residual attention (K3's `_apply_attn_res`).
         ggml_tensor * resi_stack = nullptr;
@@ -2431,8 +2428,6 @@ struct llama_model_kimi_linear : public llama_model_base {
                     ggml_tensor * identity,
                     ggml_tensor * diag_mask,
                             int   il);
-
-        const llama_model & model;
     };
 
     std::unique_ptr<llm_graph_context> build_arch_graph(const llm_graph_params & params) const override;

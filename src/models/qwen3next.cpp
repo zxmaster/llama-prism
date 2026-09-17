@@ -140,7 +140,7 @@ std::unique_ptr<llm_graph_context> llama_model_qwen3next::build_arch_graph(const
 }
 
 llama_model_qwen3next::graph::graph(const llama_model & model, const llm_graph_params & params) :
-    llm_build_delta_net_base(params), model(model) {
+    llm_build_delta_net_base(model, params) {
     ggml_tensor * cur;
     ggml_tensor * inpL;
 
