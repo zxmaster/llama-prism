@@ -80,3 +80,11 @@ const llama_tokens * common_reasoning_budget_get_end_match(const struct llama_sa
 // Manually transition the reasoning budget sampler into the FORCING state.
 // Returns true if the transition occurred.
 bool common_reasoning_budget_force(struct llama_sampler * smpl);
+
+// Detect a reasoning block that is already closed inside the prefill: think-disabled
+// templates bake an empty "<think>\n\n</think>" block into the prompt, so the prefill
+// that follows the start tag must not leave a forced message pending. Called while a
+// forced state is pending; if the remaining prefill tokens close the block, the
+// pending forcing is cancelled and the sampler transitions to DONE (a later start
+// sequence in generated output re-arms it as usual). Returns true if cancelled.
+bool common_reasoning_budget_check_prefill(struct llama_sampler * smpl, const llama_tokens & rest);

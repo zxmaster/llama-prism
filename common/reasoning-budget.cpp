@@ -488,3 +488,48 @@ bool common_reasoning_budget_force(struct llama_sampler * smpl) {
 
     return true;
 }
+
+// The prefill feed stops once a forced state begins, so this inspects the tokens that
+// follow: a closed block (empty think block from think-disabled templates) cancels the
+// pending forcing; an open block keeps it. Tracks close/reopen so only a block that is
+// closed at the end of the prefill cancels.
+bool common_reasoning_budget_check_prefill(struct llama_sampler * smpl, const llama_tokens & rest) {
+    auto * ctx = (common_reasoning_budget_ctx *) smpl->ctx;
+
+    if (ctx->state != REASONING_BUDGET_INTRO_FORCING &&
+        ctx->state != REASONING_BUDGET_SOFT_FORCING &&
+        ctx->state != REASONING_BUDGET_FORCING) {
+        return false;
+    }
+
+    token_matcher end_scan(ctx->end_matcher.seqs);
+    token_matcher start_scan(ctx->start_matcher.seqs);
+
+    bool closed = false;
+    for (const auto & token : rest) {
+        if (closed) {
+            if (start_scan.advance(token) >= 0) {
+                closed = false;
+                end_scan.reset();
+            }
+            continue;
+        }
+
+        const int32_t match = end_scan.advance(token);
+        if (match >= 0) {
+            closed = true;
+            ctx->end_match = match;
+        }
+    }
+
+    if (!closed) {
+        return false;
+    }
+
+    ctx->state = REASONING_BUDGET_DONE;
+    ctx->force_pos = 0;
+    ctx->soft_force_pos = 0;
+    ctx->intro_force_pos = 0;
+    COM_TRC("%s", "deactivated (block closed in prefill)\n");
+    return true;
+}

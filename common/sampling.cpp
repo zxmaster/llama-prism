@@ -325,7 +325,8 @@ struct common_sampler * common_sampler_init(
             params.reasoning_budget_soft_ratio,
             params.reasoning_budget_grace_tokens);
 
-        for (const auto & token : prefill_tokens) {
+        for (size_t ti = 0; ti < prefill_tokens.size(); ti++) {
+            const llama_token token = prefill_tokens[ti];
             llama_sampler_accept(rbudget, token);
             LOG_DBG("%s: reasoning-budget accepted prefill token (%d)\n", __func__, token);
 
@@ -334,11 +335,13 @@ struct common_sampler * common_sampler_init(
             // activates a forcing state here, any further prefill tokens are
             // already-fixed prompt text, not live model output - feeding them
             // in would be misread as the model having already emitted the start
-            // of the forced sequence, silently skipping ahead in it.
+            // of the forced sequence, silently skipping ahead in it. Only the rest
+            // of the prefill is still scanned: it decides whether the block is open.
             const auto state = common_reasoning_budget_get_state(rbudget);
             if (state == REASONING_BUDGET_INTRO_FORCING ||
                 state == REASONING_BUDGET_SOFT_FORCING ||
                 state == REASONING_BUDGET_FORCING) {
+                common_reasoning_budget_check_prefill(rbudget, llama_tokens(prefill_tokens.begin() + ti + 1, prefill_tokens.end()));
                 break;
             }
         }
